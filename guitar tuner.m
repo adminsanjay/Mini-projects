@@ -28,34 +28,26 @@ while true
     
     disp('Starting tuner. Press Ctrl+C to stop manually.');
     
-    % Real-time processing loop for tuning the selected string
     while true
         try
-            % Read audio frame
             audioFrame = audioReader();
             
-            % Remove DC offset
             audioFrame = audioFrame - mean(audioFrame);
             
-            % Apply Hann window to the frame
             window = hann(length(audioFrame));
             windowedFrame = audioFrame .* window;
             
-            % Zero-padding to interpolate FFT
             windowedFrame_padded = [windowedFrame; zeros(length(windowedFrame)*(zeroPaddingFactor-1),1)];
             
-            % Perform FFT
             Y = fft(windowedFrame_padded);
             P2 = abs(Y / length(windowedFrame_padded));
             P1 = P2(1:floor(length(Y)/2)+1);
             P1(2:end-1) = 2 * P1(2:end-1);
             f = fs * (0:(floor(length(Y)/2))) / length(Y);
             
-            % Find the peak frequency and its index
             [peakValue, peakIndex] = max(P1);
             dominant_freq = f(peakIndex);
             
-            % Parabolic Interpolation for better frequency estimation
             if peakIndex > 1 && peakIndex < length(P1)
                 alpha = P1(peakIndex-1);
                 beta = P1(peakIndex);
@@ -64,15 +56,12 @@ while true
                 dominant_freq = f(peakIndex) + p * (f(2) - f(1));
             end
             
-            % Determine if the detected frequency is a harmonic
             harmonic_num = round(dominant_freq / target_frequency);
             if harmonic_num >= 2 && abs(dominant_freq - harmonic_num * target_frequency) < tuning_threshold * 2
-                % If the detected frequency is close to a harmonic, estimate the fundamental
                 estimated_fundamental = dominant_freq / harmonic_num;
                 dominant_freq = estimated_fundamental;
             end
             
-            % Determine tuning status
             frequency_difference = dominant_freq - target_frequency;
             
             if abs(frequency_difference) <= tuning_threshold
@@ -86,7 +75,6 @@ while true
                 color = 'b';
             end
             
-            % Display tuning status in the command window with color
             if strcmp(color, 'g')
                 fprintf('\033[32mDetected Frequency: %.2f Hz - %s\033[0m\n', dominant_freq, tuning_status);
             elseif strcmp(color, 'r')
@@ -95,24 +83,15 @@ while true
                 fprintf('\033[34mDetected Frequency: %.2f Hz - %s\033[0m\n', dominant_freq, tuning_status);
             end
             
-            % Check if the string is in tune to stop tuning
             if strcmp(tuning_status, 'In tune!')
                 disp('String is in tune. Returning to main menu.');
-                break; % Exit the tuning loop and return to the main menu
-            end
-            
-            % Pause for a short time to reduce output frequency
-            pause(0.3); % Adjust pause time if needed
-            
+                break; 
+            end            
+            pause(0.3);            
         catch ME
-            % Handle exceptions (e.g., audio device errors)
             disp(['Error: ', ME.message]);
-            break; % Exit the tuning loop in case of an error
+            break; 
         end
-    end
-    
-    % Release audio device reader
-    release(audioReader);
-    
-    % After releasing, continue to show the main menu again
+    end    
+    release(audioReader);   
 end
